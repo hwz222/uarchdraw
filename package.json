@@ -17,6 +17,8 @@
     }
   },
   "files": [
+    ".agents/skills/uarchdraw/",
+    ".claude/skills/uarchdraw/",
     "dist/*.js",
     "dist/*.d.ts",
     "assets/DejaVuSans.ttf",

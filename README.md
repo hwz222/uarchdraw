@@ -145,6 +145,26 @@ diagram or hierarchy/detail views for large datapaths. English/Latin diagram tex
 tested font profile. Documentation, examples and the inspector are maintained
 in English.
 
+## AI agents
+
+The repository includes a [shared UarchDraw skill](.agents/skills/uarchdraw/SKILL.md)
+with a runnable example, authoring rules, CLI workflow and visual review guidance.
+
+| Agent | Entry point |
+| --- | --- |
+| Codex | Repository skill in `.agents/skills/uarchdraw/`; invoke `$uarchdraw` |
+| Claude Code | Repository skill in `.claude/skills/uarchdraw/`; invoke `/uarchdraw` |
+| Other agents | Ask the agent to read `.agents/skills/uarchdraw/SKILL.md` and follow it |
+
+Start the agent in this checkout or a subdirectory. Host settings can disable
+automatic skill discovery; direct reading of the shared file remains available.
+Both native entries use one maintained workflow, without platform-specific
+scripts or symlinks. Keep the entries with the repository/package documentation
+when moving them. They are also included in the package archive.
+
+Example request: "Use the UarchDraw skill to draw an eight-input selector. Render
+the actual SVG/PNG, inspect the result, and provide the editable source."
+
 ## Develop
 
 ```sh

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add a portable UarchDraw agent skill with Codex/Claude Code discovery entries,
+  runnable authoring guidance and visual inspection of actual rendered output.
+
 - Consolidate contributor/release guidance and the circuit gallery; remove dated
   review snapshots and redundant branding exports. Keep active regression inputs
   and CPU witnesses with the tests, outside the installed package.

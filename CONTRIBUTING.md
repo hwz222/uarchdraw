@@ -40,6 +40,10 @@ step runnable and explain the visible change, practice answer and relevant error
 The original identity uses [logo.svg](docs/images/logo.svg); regenerate the README
 banner with `npm run branding`. The banner motif is decorative, not a verified CPU.
 
+Agent guidance lives in `.agents/skills/uarchdraw/SKILL.md`. The Claude entry in
+`.claude/skills/uarchdraw/SKILL.md` points to it. Keep the shared workflow current
+with the CLI and syntax references; execute its example when changing it.
+
 ## Review drawing changes
 
 1. Inspect color and grayscale previews at a useful scale.

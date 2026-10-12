@@ -5,6 +5,7 @@
 | Guide | Purpose |
 | --- | --- |
 | [Quick start](quickstart.md) | Install and run on Windows or Ubuntu; CLI and output formats |
+| [AI agent skill](../.agents/skills/uarchdraw/SKILL.md) | Shared authoring/rendering workflow for Codex, Claude Code and other agents |
 | [Step-by-step course](../examples/tutorials/README.md) | Nine lessons with complete checkpoints, result images and practice answers |
 | [Circuit gallery](../examples/README.md) | Fourteen executable reference designs, including the RV32I pipeline |
 | [Authoring reference](authoring.md) | Version-2 parameters, arrays, templates, hierarchy and layout hints |
