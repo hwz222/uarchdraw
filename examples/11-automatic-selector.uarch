@@ -1,0 +1,29 @@
+uarch 2
+title "Automatic sample selector"
+subtitle "Change N or W; ports, select width, labels and spacing follow automatically"
+param N = 8
+param W = 16
+stages INPUT SELECT CAPTURE
+
+template Samples(N, W) {
+  label "Samples"
+  out data[N]: bits(W) { label "${index}" }
+}
+
+block samples: Samples(N, W) in INPUT
+block channel in INPUT {
+  label "Channel"
+  role control
+  out index: bits(clog2(N))
+}
+block mux: mux(N, W) in SELECT
+block capture: register in CAPTURE {
+  label "Capture"
+  in sample: bits(W)
+  in tag: bits(clog2(N))
+}
+
+connect samples.data[*] -> mux.d[*] { label "Ch${index}/${W}" }
+connect channel.index -> mux.select, capture.tag { style control }
+connect mux.out -> capture.sample { label "Sample/${W}" }
+note "The selector is structural; arithmetic and clocked behavior are not simulated."

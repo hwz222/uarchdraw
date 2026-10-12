@@ -1,0 +1,10 @@
+uarch 2
+title "Automatic spacing"
+stages INPUT CAPTURE
+block source in INPUT { out data: bits(32) }
+block capture: register in CAPTURE {
+  label "Capture"
+  in d: bits(32) { label "D" }
+  out q: bits(32) { label "Q" }
+}
+connect source.data -> capture.d { label "Decoded operand from the selected execution input / 32" }

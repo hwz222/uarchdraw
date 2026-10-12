@@ -1,0 +1,34 @@
+uarch 1
+title "Two reads and one write"
+subtitle "A 32 x 32 register file feeding a registered arithmetic result"
+stages REQUEST REGFILE EXECUTE
+type writeport {"enable":1,"address":5,"data":32}
+
+node request block REQUEST {"label":"Requests","column":0,"row":0,"span":2}
+pin request.rs1 out u5 right {"label":"rs1"}
+pin request.rs2 out u5 right {"label":"rs2"}
+pin request.write out writeport bottom
+pin request.operation out u4 bottom
+node rf block REGFILE {"label":"Register file","column":0,"row":0,"span":2,"notes":["32 words x 32 bits","two asynchronous reads"],"operation":"register-file"}
+pin rf.rs1 in u5 left {"label":"read addr 1","align":"request.rs1"}
+pin rf.rs2 in u5 left {"label":"read addr 2","align":"request.rs2"}
+pin rf.write in writeport bottom {"label":"write"}
+pin rf.a out u32 right {"label":"read 1","align":"alu.a"}
+pin rf.b out u32 right {"label":"read 2","align":"alu.b"}
+node alu alu EXECUTE {"label":"ALU","column":0,"row":0}
+pin alu.a in u32 left
+pin alu.b in u32 left
+pin alu.operation in u4 bottom
+pin alu.result out u32 right
+node result register EXECUTE {"label":"Result","column":1,"row":0,"align":{"pin":"d","with":"alu.result"}}
+pin result.d in u32 left {"label":"D"}
+
+net rs1 request.rs1 -> rf.rs1 {"label":"Rs1/5"}
+net rs2 request.rs2 -> rf.rs2 {"label":"Rs2/5"}
+net write request.write -> rf.write {"label":"Write{38}","corridor":"bottom"}
+net operand-a rf.a -> alu.a {"label":"A/32"}
+net operand-b rf.b -> alu.b {"label":"B/32"}
+net operation request.operation -> alu.operation {"label":"Op/4","style":"control"}
+net result alu.result -> result.d {"label":"Result/32"}
+note "One synchronous write and two asynchronous reads; read-during-write policy is external."
+note "The example illustrates ports and bundles, not an ISA-specific register file."

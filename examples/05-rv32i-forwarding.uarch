@@ -1,0 +1,247 @@
+uarch 1
+# Explicit electrical pins; column/row are alignment constraints, not pixel coordinates.
+title "RV32I · five-stage pipeline"
+subtitle "EX resolves branches and jumps · forwarding + one-cycle load-use interlock"
+stages IF ID EX MEM WB
+type bundle1 {"instruction":32,"valid":1}
+type bundle2 {"rs1":5,"rs2":5,"rd":5,"usesRs1":1,"usesRs2":1}
+type bundle3 {"valid":1,"RegWrite":1,"MemRead":1,"rd":5}
+type bundle4 {"valid":1,"RegWrite":1,"MemRead":1,"MemWrite":1,"resultSel":2,"aluOp":4,"srcA":2,"srcB":1,"branch":3,"jump":2,"funct3":3}
+type bundle5 {"data":32,"mask":4}
+
+node npc mux IF {"label":"Next PC","column":0,"row":2}
+pin npc.seq in u32 left {"label":"0"}
+pin npc.target in u32 left {"label":"1"}
+pin npc.select in u1 top {"label":"redirect"}
+pin npc.out out u32 right {"label":"out"}
+
+node pc register IF {"label":"PC","column":0,"row":3,"align":{"pin":"q","with":"imem.address"}}
+pin pc.d in u32 left {"label":"d"}
+pin pc.q out u32 right {"label":"q"}
+pin pc.enable in u1 top {"label":"en"}
+
+node inc adder IF {"label":"+4","column":1,"row":1,"operation":"add4"}
+pin inc.pc in u32 left {"label":"pc"}
+pin inc.out out u32 right {"label":"out"}
+
+node imem block IF {"label":"Instruction\nmemory","column":1,"row":3}
+pin imem.address in u32 left {"label":"addr"}
+pin imem.instruction out bundle1 right {"label":"inst / V"}
+
+node ifid pipeline IF {"label":"IF / ID","column":2,"row":0,"span":6,"operation":"pipeline-register"}
+pin ifid.pc_d in u32 left {"label":"pc","row":0,"offset":0.8}
+pin ifid.pc_q out u32 right {"label":"pc","row":0,"offset":0.8}
+pin ifid.pc4_d in u32 left {"label":"pc4","row":0,"offset":0.95}
+pin ifid.pc4_q out u32 right {"label":"pc4","row":0,"offset":0.95}
+pin ifid.inst_d in bundle1 left {"label":"inst","row":3,"align":"imem.instruction"}
+pin ifid.inst_q out bundle1 right {"label":"inst","row":3,"align":"imem.instruction"}
+pin ifid.enable in u1 top {"label":"en","offset":0.25}
+pin ifid.clear in u1 top {"label":"clr","offset":0.75}
+
+node hazard block ID {"label":"Hazard / flush","column":0,"row":0,"notes":["redirect > stall"],"operation":"hazard"}
+pin hazard.decode in bundle2 left {"label":"ID"}
+pin hazard.execute in bundle3 bottom {"label":"EX"}
+pin hazard.redirect in u1 top {"label":"redirect"}
+pin hazard.hold out u1 top {"label":"hold"}
+pin hazard.clearIF out u1 right {"label":"IF clr"}
+pin hazard.clearEX out u1 right {"label":"EX clr"}
+
+node decode block ID {"label":"Decode","column":0,"row":1}
+pin decode.inst in bundle1 left {"label":"inst"}
+pin decode.ctl out bundle4 right {"label":"control"}
+pin decode.regs out bundle2 left {"label":"indices","offset":0.9}
+pin decode.rs1 out u5 bottom {"label":"rs1","offset":0.25}
+pin decode.rs2 out u5 bottom {"label":"rs2","offset":0.75}
+
+node rf block ID {"label":"Register file","column":0,"row":2,"span":3,"notes":["32 x 32   /   x0 = 0","WB → ID read-through"],"operation":"register-file"}
+pin rf.rs1 in u5 top {"label":"rs1","offset":0.3333333333333333}
+pin rf.rs2 in u5 top {"label":"rs2","offset":0.6666666666666666}
+pin rf.rd in bundle3 left {"label":"rd / we","offset":0.7}
+pin rf.data in u32 left {"label":"write","offset":0.9}
+pin rf.a out u32 right {"label":"read 1","align":"fa.original"}
+pin rf.b out u32 right {"label":"read 2","align":"fb.original"}
+
+node imm block ID {"label":"Immediate","column":0,"row":5,"notes":["I / S / B / U / J"]}
+pin imm.inst in bundle1 left {"label":"inst"}
+pin imm.out out u32 right {"label":"out"}
+
+node idex pipeline ID {"label":"ID / EX","column":1,"row":0,"span":6,"operation":"pipeline-register"}
+pin idex.ctl_d in bundle4 left {"label":"ctl","row":0}
+pin idex.ctl_q out bundle4 right {"label":"ctl","row":0}
+pin idex.pc_d in u32 left {"label":"pc","row":1,"align":"ifid.pc_q"}
+pin idex.pc_q out u32 right {"label":"pc","row":1,"align":"ifid.pc_q"}
+pin idex.a_d in u32 left {"label":"a","row":2,"align":"fa.original"}
+pin idex.a_q out u32 right {"label":"a","row":2,"align":"fa.original"}
+pin idex.pc4_d in u32 left {"label":"pc4","row":3,"align":"ifid.pc4_q"}
+pin idex.pc4_q out u32 right {"label":"pc4","row":3,"align":"ifid.pc4_q"}
+pin idex.b_d in u32 left {"label":"b","row":4,"align":"fb.original"}
+pin idex.b_q out u32 right {"label":"b","row":4,"align":"fb.original"}
+pin idex.imm_d in u32 left {"label":"imm","row":5,"align":"imm.out"}
+pin idex.imm_q out u32 right {"label":"imm","row":5,"align":"imm.out"}
+pin idex.regs_d in bundle2 bottom {"label":"rs / rd","offset":0.25}
+pin idex.regs_q out bundle2 bottom {"label":"rs / rd","offset":0.75}
+pin idex.clear in u1 top {"label":"bubble"}
+pin idex.status out bundle3 top {"label":"status"}
+
+node forward block EX {"label":"Forward control","column":0,"row":6,"notes":["MEM > WB; rd ≠ 0","valid + write + ready"],"operation":"forward-control"}
+pin forward.regs in bundle2 left {"label":"rs1 / rs2"}
+pin forward.mem in bundle3 bottom {"label":"MEM"}
+pin forward.wb in bundle3 bottom {"label":"WB"}
+pin forward.a out u2 top {"label":"sel A"}
+pin forward.b out u2 top {"label":"sel B"}
+
+node fa mux EX {"label":"Fwd A","column":0,"row":2,"operation":"forward-mux"}
+pin fa.original in u32 left {"label":"0","offset":0.3333333333333333}
+pin fa.mem in u32 left {"label":"1","offset":0.6}
+pin fa.wb in u32 left {"label":"2","offset":0.85}
+pin fa.sel in u2 bottom {"label":"sel"}
+pin fa.out out u32 right {"label":"out"}
+
+node fb mux EX {"label":"Fwd B","column":0,"row":4,"operation":"forward-mux"}
+pin fb.original in u32 left {"label":"0","offset":0.3333333333333333}
+pin fb.mem in u32 left {"label":"1","offset":0.6}
+pin fb.wb in u32 left {"label":"2","offset":0.85}
+pin fb.sel in u2 bottom {"label":"sel"}
+pin fb.out out u32 right {"label":"out"}
+
+node branch block EX {"label":"Branch compare","column":1,"row":0,"notes":["BEQ / BNE / BLT ..."],"operation":"branch"}
+pin branch.a in u32 left {"label":"A"}
+pin branch.b in u32 left {"label":"B"}
+pin branch.ctl in bundle4 top {"label":"branch / jump"}
+pin branch.taken out u1 top {"label":"redirect"}
+
+node target block EX {"label":"Target + / mask","column":1,"row":1,"notes":["PC or rs1 + imm","JALR: clear bit 0"],"operation":"target"}
+pin target.pc in u32 left {"label":"PC"}
+pin target.rs1 in u32 left {"label":"rs1"}
+pin target.imm in u32 bottom {"label":"imm"}
+pin target.ctl in bundle4 top {"label":"JALR"}
+pin target.out out u32 top {"label":"target"}
+
+node sa mux EX {"label":"ALU A","column":1,"row":2}
+pin sa.reg in u32 left {"label":"rs1","offset":0.5}
+pin sa.pc in u32 left {"label":"PC","offset":0.2}
+pin sa.zero in u32 left {"label":"0","offset":0.8}
+pin sa.ctl in bundle4 top {"label":"src A"}
+pin sa.out out u32 right {"label":"out"}
+
+node zero block EX {"label":"0","column":0,"row":3,"operation":"constant-zero"}
+pin zero.out out u32 right {"label":"out"}
+
+node sb mux EX {"label":"ALU B","column":1,"row":4}
+pin sb.reg in u32 left {"label":"rs2","offset":0.5}
+pin sb.imm in u32 left {"label":"imm","offset":0.8}
+pin sb.ctl in bundle4 top {"label":"src B"}
+pin sb.out out u32 right {"label":"out"}
+
+node alu alu EX {"label":"ALU","column":2,"row":3,"operation":"alu","align":{"pin":"out","with":"exmem.alu_d"}}
+pin alu.a in u32 left {"label":"A","offset":0.2}
+pin alu.b in u32 left {"label":"B","offset":0.8}
+pin alu.ctl in bundle4 top {"label":"op"}
+pin alu.out out u32 right {"label":"out"}
+
+node exmem pipeline EX {"label":"EX / MEM","column":3,"row":0,"span":6,"operation":"pipeline-register"}
+pin exmem.ctl_d in bundle4 left {"label":"ctl","row":0}
+pin exmem.ctl_q out bundle4 right {"label":"ctl","row":0}
+pin exmem.pc4_d in u32 left {"label":"pc4","row":2,"align":"idex.pc4_q"}
+pin exmem.pc4_q out u32 right {"label":"pc4","row":2,"align":"idex.pc4_q"}
+pin exmem.alu_d in u32 left {"label":"alu","row":3}
+pin exmem.alu_q out u32 right {"label":"alu","row":3}
+pin exmem.store_d in u32 left {"label":"store","row":4}
+pin exmem.store_q out u32 right {"label":"store","row":4}
+pin exmem.regs_d in bundle2 bottom {"label":"rd"}
+pin exmem.status out bundle3 bottom {"label":"status"}
+
+node ready mux MEM {"label":"Ready","column":0,"row":1,"operation":"ready-result"}
+pin ready.alu in u32 left {"label":"ALU"}
+pin ready.pc4 in u32 left {"label":"link"}
+pin ready.ctl in bundle4 top {"label":"result"}
+pin ready.out out u32 right {"label":"MEM value"}
+
+node dmem block MEM {"label":"Data memory","column":0,"row":3,"align":{"pin":"address","with":"exmem.alu_q"}}
+pin dmem.address in u32 left {"label":"addr"}
+pin dmem.write in bundle5 bottom {"label":"data / mask"}
+pin dmem.ctl in bundle4 top {"label":"R / W"}
+pin dmem.read out u32 right {"label":"read"}
+
+node store block MEM {"label":"Store lanes","column":0,"row":4,"notes":["SB / SH / SW"]}
+pin store.data in u32 left {"label":"store data"}
+pin store.address in u32 left {"label":"addr"}
+pin store.ctl in bundle4 top {"label":"size","offset":0.15}
+pin store.out out bundle5 top {"label":"data / mask","offset":0.5}
+
+node load block MEM {"label":"Load extend","column":0,"row":5,"notes":["LB / LH / LW / LBU / LHU"]}
+pin load.data in u32 left {"label":"read"}
+pin load.address in u32 left {"label":"addr"}
+pin load.ctl in bundle4 top {"label":"size / sign"}
+pin load.out out u32 right {"label":"out"}
+
+node memwb pipeline MEM {"label":"MEM / WB","column":1,"row":0,"span":6,"operation":"pipeline-register"}
+pin memwb.ctl_d in bundle4 left {"label":"ctl","row":0}
+pin memwb.ctl_q out bundle4 right {"label":"ctl","row":0}
+pin memwb.ready_d in u32 left {"label":"ready","row":2,"align":"ready.out"}
+pin memwb.ready_q out u32 right {"label":"ready","row":2,"align":"ready.out"}
+pin memwb.load_d in u32 left {"label":"load","row":5,"align":"load.out"}
+pin memwb.load_q out u32 right {"label":"load","row":5,"align":"load.out"}
+pin memwb.status_d in bundle3 bottom {"label":"rd / we","offset":0.25}
+pin memwb.status_q out bundle3 bottom {"label":"rd / we","offset":0.75}
+
+node wb mux WB {"label":"WB","column":0,"row":3,"operation":"writeback"}
+pin wb.ready in u32 left {"label":"ready"}
+pin wb.load in u32 left {"label":"load"}
+pin wb.ctl in bundle4 top {"label":"result"}
+pin wb.out out u32 bottom {"label":"WB value"}
+
+net next-pc npc.out -> pc.d {"label":"PCNext/32","description":"Next PC: select PC+4 or the redirect target computed in EX."}
+net pc pc.q -> imem.address, inc.pc, ifid.pc_d {"label":"PC_F/32","description":"Current IF-stage PC, sent to instruction memory, the incrementer and IF/ID."}
+net pc-plus-four inc.out -> npc.seq, ifid.pc4_d {"label":"PC4_F/32","description":"IF-stage PC+4 for sequential fetch and the JAL/JALR link value."}
+net instruction imem.instruction -> ifid.inst_d {"label":"Instr_F{33}","description":"Fetched 32-bit instruction and its valid bit."}
+net id-instruction ifid.inst_q -> decode.inst, imm.inst {"label":"Instr_D{33}","description":"ID-stage instruction and valid bit, sent to the decoder and immediate generator."}
+net id-pc ifid.pc_q -> idex.pc_d {"label":"PC_D/32","description":"Instruction PC in the ID stage."}
+net id-pc4 ifid.pc4_q -> idex.pc4_d {"label":"PC4_D/32","description":"PC+4 in the ID stage."}
+net decoded-control decode.ctl -> idex.ctl_d {"style":"control","label":"Ctrl_D{21}","description":"Decoded control bundle, captured by ID/EX."}
+net decoded-registers decode.regs -> hazard.decode, idex.regs_d {"style":"control","label":"Idx_D{17}","description":"rs1, rs2, rd and source-use flags for hazard detection and pipeline propagation."}
+net read-address-a decode.rs1 -> rf.rs1 {"style":"control","label":"Rs1_D/5","description":"First register-file read address: rs1."}
+net read-address-b decode.rs2 -> rf.rs2 {"style":"control","label":"Rs2_D/5","description":"Second register-file read address: rs2."}
+net read-a rf.a -> idex.a_d {"label":"Read1_D/32","description":"Value read from rs1 in ID."}
+net read-b rf.b -> idex.b_d {"label":"Read2_D/32","description":"Value read from rs2 in ID."}
+net immediate imm.out -> idex.imm_d {"label":"Imm_D/32","description":"32-bit immediate decoded from the I/S/B/U/J instruction formats."}
+net execute-control idex.ctl_q -> branch.ctl, target.ctl, sa.ctl, sb.ctl, alu.ctl, exmem.ctl_d {"style":"control","label":"Ctrl_E{21}","description":"EX control bundle for branches, jumps, ALU operands and operations; also passed to MEM."}
+net execute-registers idex.regs_q -> forward.regs, exmem.regs_d {"style":"control","label":"Idx_E{17}","description":"EX register indices and source-use flags for forwarding comparisons and rd propagation."}
+net execute-status idex.status -> hazard.execute {"style":"control","label":"Haz_E{8}","description":"EX status used by the hazard unit to detect load-use dependencies."}
+net ex-pc idex.pc_q -> sa.pc, target.pc {"label":"PC_E/32","description":"EX-stage instruction PC for AUIPC and PC-relative targets."}
+net ex-pc4 idex.pc4_q -> exmem.pc4_d {"label":"PC4_E/32","description":"EX-stage PC+4 for JAL/JALR writeback."}
+net operand-a idex.a_q -> fa.original {"label":"OpA_E/32","description":"Original rs1 value entering EX."}
+net operand-b idex.b_q -> fb.original {"label":"OpB_E/32","description":"Original rs2 value entering EX."}
+net ex-immediate idex.imm_q -> sb.imm, target.imm {"label":"Imm_E/32","description":"EX immediate for ALU B selection and redirect-target calculation."}
+net zero zero.out -> sa.zero {"label":"Zero/32","description":"Constant zero used by LUI."}
+net forwarded-a fa.out -> sa.reg, branch.a, target.rs1 {"label":"FwdA_E/32","description":"Forwarded rs1 value for ALU A, branch comparison and the JALR target."}
+net forwarded-b fb.out -> sb.reg, branch.b, exmem.store_d {"label":"FwdB_E/32","description":"Forwarded rs2 value for ALU B, branch comparison and store data."}
+net alu-a sa.out -> alu.a {"label":"ALU_A/32","description":"Final ALU A operand: rs1, PC or zero."}
+net alu-b sb.out -> alu.b {"label":"ALU_B/32","description":"Final ALU B operand: rs2 or the immediate."}
+net alu-result alu.out -> exmem.alu_d {"label":"ALU_E/32","description":"EX ALU result, also used as the effective load/store address."}
+net select-a forward.a -> fa.sel {"style":"control","label":"ForwardA/2","description":"Forward A selection: 0=original, 1=MEM, 2=WB; MEM has priority."}
+net select-b forward.b -> fb.sel {"style":"control","label":"ForwardB/2","description":"Forward B selection: 0=original, 1=MEM, 2=WB; MEM has priority."}
+net memory-control exmem.ctl_q -> ready.ctl, dmem.ctl, store.ctl, load.ctl, memwb.ctl_d {"style":"control","label":"Ctrl_M{21}","description":"MEM control bundle for memory access, width, load extension and result selection."}
+net memory-status exmem.status -> forward.mem, memwb.status_d {"style":"control","corridor":"bottom","label":"Status_M{8}","description":"MEM valid, RegWrite, MemRead and rd for forwarding decisions and propagation to WB."}
+net memory-address exmem.alu_q -> ready.alu, dmem.address, store.address, load.address {"label":"Addr_M/32","description":"MEM ALU result/address for the ready result, data memory and byte-lane selection."}
+net memory-link exmem.pc4_q -> ready.pc4 {"label":"PC4_M/32","description":"MEM-stage PC+4 for the JAL/JALR link value."}
+net store-data exmem.store_q -> store.data {"label":"Store_M/32","description":"Forwarded store data captured by EX/MEM."}
+net store-lanes store.out -> dmem.write {"label":"WrBus{36}","description":"Aligned 32-bit store data and four byte-mask bits."}
+net memory-read dmem.read -> load.data {"label":"Read_M/32","description":"32-bit data read from data memory."}
+net load-result load.out -> memwb.load_d {"label":"Load_M/32","description":"Load result after byte/halfword selection and sign or zero extension."}
+net mem-forward ready.out -> fa.mem, fb.mem, memwb.ready_d {"style":"forward","corridor":"bottom","label":"Bypass_M/32","description":"Forwardable MEM ALU or PC+4 result; a load address is not load data."}
+net wb-ready memwb.ready_q -> wb.ready {"label":"Ready_W/32","description":"ALU/PC+4 result available for WB selection."}
+net wb-load memwb.load_q -> wb.load {"label":"Load_W/32","description":"Load result available for WB selection."}
+net wb-control memwb.ctl_q -> wb.ctl {"style":"control","label":"Ctrl_W{21}","description":"WB control bundle selecting the final writeback value."}
+net wb-value wb.out -> fa.wb, fb.wb, rf.data {"style":"writeback","corridor":"bottom","label":"Result_W/32","description":"Final WB value, returned to the register file and both forwarding MUXes."}
+net wb-status memwb.status_q -> forward.wb, rf.rd {"style":"control","corridor":"bottom","label":"Status_W{8}","description":"WB valid, RegWrite, MemRead and rd for forwarding and register-file write control."}
+net redirect branch.taken -> npc.select, hazard.redirect {"style":"control","corridor":"top","label":"Redirect/1","description":"Taken EX branch or JAL/JALR: redirect instruction fetch and request a flush."}
+net redirect-target target.out -> npc.target {"corridor":"top","label":"Target_E/32","description":"Target calculated in EX; JALR clears bit 0."}
+net hold hazard.hold -> pc.enable, ifid.enable {"style":"control","corridor":"top","label":"PCWrite/1","description":"PC and IF/ID enable = !stall OR redirect."}
+net clear-if hazard.clearIF -> ifid.clear {"style":"control","corridor":"top","label":"IFIDFlush/1","description":"Clear IF/ID valid on a redirect."}
+net clear-ex hazard.clearEX -> idex.clear {"style":"control","corridor":"top","label":"IDEXClear/1","description":"Clear ID/EX valid on a redirect or load-use dependency, inserting a bubble."}
+note "Name/N = N-bit signal; Name{N} = typed bundle. F / D / E / M / W = pipeline stage. Dot = connection; gap = crossing."
+note "0 = register operand   1 = MEM ready result   2 = WB result; MEM wins when both match."
+note "Load-use: freeze PC + IF/ID, bubble ID/EX. Redirect: flush IF/ID + ID/EX; redirect wins over stall."
+note "Separate zero-wait memories. EX forwards store data; load → store stalls once. WB is visible to ID in the same cycle."
+note "Datapath teaching profile. FENCE / ECALL / EBREAK and execution-environment traps are outside this diagram."

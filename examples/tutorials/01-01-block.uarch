@@ -1,0 +1,5 @@
+uarch 2
+title "My first block"
+block source {
+  label "Source"
+}

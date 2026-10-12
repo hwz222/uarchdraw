@@ -1,0 +1,36 @@
+uarch 1
+title "Select an ALU operand"
+subtitle "The same ALU accepts a register value or an immediate."
+stages ID EX MEM
+
+node rf block ID {"label":"Register file","column":0,"row":0}
+pin rf.a out u32 right {"label":"read 1","align":"alu.a"}
+pin rf.b out u32 right {"label":"read 2"}
+node imm block ID {"label":"Immediate","column":0,"row":1}
+pin imm.value out u32 right
+node decode block ID {"label":"Control","column":0,"row":2}
+pin decode.select out u1 right
+
+node mux mux EX {"label":"ALU B","column":0,"row":1}
+pin mux.reg in u32 left {"label":"0"}
+pin mux.imm in u32 left {"label":"1"}
+pin mux.select in u1 bottom
+pin mux.out out u32 right
+
+node alu alu EX {"label":"ALU","column":1,"row":0,"align":{"pin":"out","with":"latch.result_d"}}
+pin alu.a in u32 left
+pin alu.b in u32 left
+pin alu.out out u32 right
+
+node latch pipeline MEM {"label":"EX / MEM","column":0,"row":0,"span":2}
+pin latch.result_d in u32 left {"label":"result","row":0}
+pin latch.result_q out u32 right {"label":"result","row":0}
+
+net read-a rf.a -> alu.a {"label":"Read1/32"}
+net read-b rf.b -> mux.reg {"label":"Read2/32"}
+net immediate imm.value -> mux.imm {"label":"Imm/32"}
+net select decode.select -> mux.select {"label":"ALUSrc/1","style":"control"}
+net operand-b mux.out -> alu.b {"label":"ALU_B/32"}
+net result alu.out -> latch.result_d {"label":"Result/32"}
+note "ALUSrc = 0 selects the register value; ALUSrc = 1 selects the immediate."
+note "This drawing explains connectivity; selection behavior is documented, not simulated by the DSL."

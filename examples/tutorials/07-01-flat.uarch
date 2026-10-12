@@ -1,0 +1,21 @@
+uarch 2
+title "A processing chain"
+param W = 32
+stages INPUT EXECUTE OUTPUT
+block source in INPUT {
+  label "Operand source"
+  out data: bits(W)
+}
+block compute in EXECUTE {
+  label "Compute"
+  in operand: bits(W)
+  out result: bits(W)
+}
+block latch: register(W) in EXECUTE { label "Result register" }
+block consumer in OUTPUT {
+  label "Result consumer"
+  in data: bits(W)
+}
+connect source.data -> compute.operand
+connect compute.result -> latch.d
+connect latch.q -> consumer.data

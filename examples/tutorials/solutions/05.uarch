@@ -1,0 +1,11 @@
+uarch 2
+title "One template, two widths"
+template Output(WIDTH) {
+  out data: bits(WIDTH)
+}
+block narrow: Output(8) { label "Narrow source" }
+block wide: Output(32) { label "Wide source" }
+block narrow_capture: register(8) { label "8-bit capture" }
+block wide_capture: register(32) { label "32-bit capture" }
+connect narrow.data -> narrow_capture.d
+connect wide.data -> wide_capture.d

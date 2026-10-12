@@ -1,0 +1,30 @@
+uarch 2
+title "A grouped processing chain"
+subtitle "Render the full graph, collapse groups for an overview, or focus on core.execute"
+param W = 32
+stages INPUT EXECUTE OUTPUT
+
+block source in INPUT {
+  label "Operand source"
+  out data: bits(W)
+}
+group core {
+  label "Integer core"
+  group execute {
+    label "Execute stage"
+    block compute in EXECUTE {
+      label "Compute"
+      in operand: bits(W)
+      out result: bits(W)
+    }
+    block latch: register(W) in EXECUTE { label "Result register" }
+    connect compute.result -> latch.d
+  }
+}
+block consumer in OUTPUT {
+  label "Result consumer"
+  in data: bits(W)
+}
+connect source.data -> core.execute.compute.operand
+connect core.execute.latch.q -> consumer.data
+note "Overview and detail views are derived from this one connectivity model."

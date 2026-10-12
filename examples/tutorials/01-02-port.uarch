@@ -1,0 +1,6 @@
+uarch 2
+title "My first port"
+block source {
+  label "Source"
+  out data: bits(32)
+}

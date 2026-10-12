@@ -1,0 +1,22 @@
+uarch 2
+title "A typed storage status"
+stages STORAGE CONTROL
+type Flags {
+  full: 1
+  empty: 1
+}
+block storage in STORAGE {
+  label "Storage"
+  role data
+  out status: Flags
+}
+type OtherFlags {
+  occupied: 1
+  empty: 1
+}
+block handshake in CONTROL {
+  label "Handshake"
+  role control
+  in status: OtherFlags
+}
+connect storage.status -> handshake.status

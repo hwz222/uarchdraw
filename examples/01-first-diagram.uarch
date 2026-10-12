@@ -1,0 +1,15 @@
+uarch 1
+# Start with two symbols, two named ports, and one 32-bit net.
+title "Your first datapath"
+subtitle "Explicit ports. A named signal. One connected result."
+stages EX MEM
+
+# Omitting BOTH column and row asks for automatic ordering within each stage.
+node compute block EX {"label":"Compute"}
+pin compute.result out u32 right {"label":"result"}
+
+node latch register MEM {"label":"Result"}
+pin latch.data in u32 left {"label":"D"}
+
+net result compute.result -> latch.data {"label":"Result/32","description":"The 32-bit result produced by Compute and received by the result register."}
+note "Arrowheads mark receiving ports. /32 means a 32-bit signal."

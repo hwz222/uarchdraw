@@ -1,0 +1,25 @@
+name: Feature request
+description: Describe a concrete drawing or editing workflow that needs improvement.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: Please write in English. Concrete circuits and expected output help us assess proposals.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or workflow
+      description: Explain what is difficult and include a small source or drawing when possible.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the result you want and any syntax or output changes.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Current workaround or alternatives

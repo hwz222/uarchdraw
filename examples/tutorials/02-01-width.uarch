@@ -1,0 +1,12 @@
+uarch 2
+param W = 16
+title "A parameterized connection"
+block source {
+  label "Source"
+  out data: bits(W)
+}
+
+block capture: register(W) {
+  label "Result register"
+}
+connect source.data -> capture.d

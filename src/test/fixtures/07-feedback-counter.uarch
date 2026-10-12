@@ -1,0 +1,30 @@
+uarch 1
+title "Counter with enable and feedback"
+subtitle "Increment by one when enabled; otherwise hold the previous count"
+stages STATE NEXT
+
+node count register STATE {"label":"Count","column":0,"row":0}
+pin count.d in u32 top {"label":"next"}
+pin count.q out u32 right {"label":"Q"}
+node one block STATE {"label":"1","column":0,"row":1}
+pin one.value out u32 right
+node enable block STATE {"label":"Enable","column":0,"row":2}
+pin enable.value out u1 right
+
+node add adder NEXT {"label":"+","column":0,"row":0}
+pin add.a in u32 left
+pin add.b in u32 left
+pin add.sum out u32 right
+node next mux NEXT {"label":"Next","column":1,"row":0}
+pin next.hold in u32 left {"label":"0"}
+pin next.step in u32 left {"label":"1"}
+pin next.enable in u1 bottom
+pin next.value out u32 right
+
+net count count.q -> add.a, next.hold {"label":"Count/32","description":"Current count, sent to both the adder and the hold input."}
+net one one.value -> add.b {"label":"One/32","description":"Constant increment of one."}
+net sum add.sum -> next.step {"label":"Sum/32","description":"Count + 1, truncated to 32 bits on overflow."}
+net enable enable.value -> next.enable {"label":"Enable/1","style":"control"}
+net next next.value -> count.d {"label":"Next/32","corridor":"top","description":"Enable selects Sum or Count for capture at the next clock edge."}
+note "Count starts at zero. Common clock and reset are omitted."
+note "Enable selects input 1; input 0 holds Count. Arithmetic is specified, not simulated."

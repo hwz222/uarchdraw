@@ -1,0 +1,25 @@
+uarch 1
+title "Keep related signals together"
+subtitle "Bundle compatibility checks field names as well as widths."
+stages EX MEM WB
+type writebus {"data":32,"mask":4}
+type status {"valid":1,"RegWrite":1,"rd":5}
+
+# These outputs represent fields already present at a pipeline boundary.
+node exmem pipeline EX {"label":"EX / MEM","column":0,"row":0,"span":3}
+pin exmem.address out u32 right {"label":"address","row":0}
+pin exmem.write out writebus right {"label":"write","row":1}
+pin exmem.status out status right {"label":"status","row":2}
+
+node memory block MEM {"label":"Data memory","column":0,"row":0,"span":2}
+pin memory.address in u32 left {"label":"addr","align":"exmem.address"}
+pin memory.write in writebus left {"label":"data / mask","align":"exmem.write"}
+
+node commit block WB {"label":"Write control","column":0,"row":2}
+pin commit.status in status left {"label":"rd / we"}
+
+net address exmem.address -> memory.address {"label":"Addr/32"}
+net write exmem.write -> memory.write {"label":"Write{36}","description":"32 data bits plus four byte-enable bits; this is a typed bundle, not a u36 scalar."}
+net status exmem.status -> commit.status {"label":"Status{7}","style":"control","description":"valid[1], RegWrite[1], rd[5]."}
+note "Write{36} carries data[32] + mask[4]. Status{7} carries valid[1] + RegWrite[1] + rd[5]."
+note "A scalar of the same total width is not interchangeable with a typed bundle."

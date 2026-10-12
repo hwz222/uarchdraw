@@ -1,0 +1,58 @@
+uarch 2
+title "An automatic round-robin datapath"
+subtitle "Data above control, with inferred port sides and no row/column/alignment hints"
+param N = 6
+param W = 32
+stages INPUT SELECT OUTPUT
+
+template Queues(N, W) {
+  label "Input FIFOs"
+  out data[N]: bits(W) { label "${index}" }
+  out request: bits(N)
+  in grant: bits(N)
+}
+
+block queues: Queues(N, W) in INPUT
+block arbiter in INPUT {
+  label "Round-robin"
+  role control
+  in request: bits(N)
+  in accept: bit
+  out grant: bits(N)
+  out index: bits(clog2(N))
+}
+block any in SELECT {
+  label "Any request"
+  role control
+  in request: bits(N)
+  out valid: bit
+}
+block mux: mux(N, W) in SELECT
+block buffer: register in OUTPUT {
+  label "Output buffer"
+  in data: bits(W)
+  in valid: bit
+  in out_ready: bit
+  out ready: bit
+  out result: bits(W)
+  out out_valid: bit
+}
+block consumer in OUTPUT {
+  label "Consumer"
+  in data: bits(W)
+  in valid: bit
+  out ready: bit
+}
+
+connect queues.data[*] -> mux.d[*] { label "Data${index}/${W}" }
+connect queues.request -> arbiter.request, any.request
+connect arbiter.grant -> queues.grant
+connect arbiter.index -> mux.select
+connect any.valid -> buffer.valid
+connect mux.out -> buffer.data
+connect buffer.ready -> arbiter.accept
+connect buffer.result -> consumer.data
+connect buffer.out_valid -> consumer.valid
+connect consumer.ready -> buffer.out_ready
+note "Priority advances on acceptance. A full output buffer holds its data while blocked."
+note "Behavior is a design contract; the diagram compiler checks types and connectivity."

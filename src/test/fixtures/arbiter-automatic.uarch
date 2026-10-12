@@ -1,0 +1,62 @@
+uarch 1
+title "Five inputs, one shared output"
+subtitle "Round-robin arbitration with a one-entry ready/valid output buffer"
+stages INPUT CONTROL SELECT OUTPUT
+
+# Five independent input queues. req[i] means head data i is available.
+node queues block INPUT {"label":"Input FIFOs","notes":["5 independent queues"]}
+pin queues.data0 out u32 right {"label":"data 0"}
+pin queues.data1 out u32 right {"label":"data 1"}
+pin queues.data2 out u32 right {"label":"data 2"}
+pin queues.data3 out u32 right {"label":"data 3"}
+pin queues.data4 out u32 right {"label":"data 4"}
+pin queues.request out u5 top {"label":"request"}
+pin queues.grant in u5 top {"label":"pop"}
+
+node arbiter block CONTROL {"label":"Round-robin","notes":["rotate only on accept"]}
+pin arbiter.request in u5 left {"label":"req"}
+pin arbiter.accept in u1 bottom {"label":"ready"}
+pin arbiter.grant out u5 top {"label":"grant"}
+pin arbiter.select out u3 right {"label":"index"}
+node any block CONTROL {"label":"Any request","notes":["valid = OR(req)"]}
+pin any.request in u5 left {"label":"req"}
+pin any.valid out u1 right {"label":"valid"}
+
+node select mux SELECT {"label":"5:1 MUX"}
+pin select.d0 in u32 left {"label":"0"}
+pin select.d1 in u32 left {"label":"1"}
+pin select.d2 in u32 left {"label":"2"}
+pin select.d3 in u32 left {"label":"3"}
+pin select.d4 in u32 left {"label":"4"}
+pin select.index in u3 top {"label":"sel"}
+pin select.data out u32 right
+
+node buffer register OUTPUT {"label":"Output buffer","notes":["data[32] + valid","ready = !full OR out_ready"]}
+pin buffer.data in u32 left {"label":"D"}
+pin buffer.valid_in in u1 top {"label":"valid in"}
+pin buffer.ready_in in u1 bottom {"label":"out ready"}
+pin buffer.ready out u1 bottom {"label":"can accept"}
+pin buffer.data_out out u32 right {"label":"Q"}
+pin buffer.valid_out out u1 right {"label":"valid"}
+node consumer block OUTPUT {"label":"Consumer"}
+pin consumer.data in u32 left {"label":"data"}
+pin consumer.valid in u1 left {"label":"valid"}
+pin consumer.ready out u1 bottom {"label":"ready"}
+
+net data0 queues.data0 -> select.d0 {"label":"Data0/32","description":"FIFO 0 head data, valid when req[0] is asserted."}
+net data1 queues.data1 -> select.d1 {"label":"Data1/32","description":"FIFO 1 head data, valid when req[1] is asserted."}
+net data2 queues.data2 -> select.d2 {"label":"Data2/32","description":"FIFO 2 head data, valid when req[2] is asserted."}
+net data3 queues.data3 -> select.d3 {"label":"Data3/32","description":"FIFO 3 head data, valid when req[3] is asserted."}
+net data4 queues.data4 -> select.d4 {"label":"Data4/32","description":"FIFO 4 head data, valid when req[4] is asserted."}
+net request queues.request -> arbiter.request, any.request {"label":"Req/5","style":"control","description":"Five request bits, with one net feeding the arbiter and OR reduction."}
+net grant arbiter.grant -> queues.grant {"label":"Grant/5","style":"control","corridor":"top","description":"One-hot-or-zero grant; pop the selected FIFO only when its request and CanAccept are asserted."}
+net index arbiter.select -> select.index {"label":"Select/3","style":"control","description":"Index 0..4 selected by rotating priority; unused when there is no request."}
+net input-valid any.valid -> buffer.valid_in {"label":"InValid/1","style":"control","description":"OR(req); the buffer accepts data only when InValid && CanAccept."}
+net selected select.data -> buffer.data {"label":"Selected/32","description":"Head data from the selected FIFO."}
+net can-accept buffer.ready -> arbiter.accept {"label":"CanAccept/1","style":"control","corridor":"bottom","description":"!full || OutReady; permit a grant and advance priority only when the buffer can accept data."}
+net output-data buffer.data_out -> consumer.data {"label":"OutData/32","description":"Buffered output data, held stable while OutValid && !OutReady."}
+net output-valid buffer.valid_out -> consumer.valid {"label":"OutValid/1","style":"control","description":"The output buffer contains valid data."}
+net output-ready consumer.ready -> buffer.ready_in {"label":"OutReady/1","style":"control","description":"The consumer can accept data; OutValid && OutReady consumes one word."}
+note "Grant is one-hot-or-zero. Priority advances only when a word enters the output buffer."
+note "Backpressure holds output data + valid. A consumed word can be replaced in the same cycle."
+note "The six blocks are conceptual units; arbitration and buffer behavior are specified in the companion notes."

@@ -1,0 +1,54 @@
+uarch 2
+title "A ready / valid FIFO"
+subtitle "Reusable interfaces and inferred data/control lanes"
+param W = 32
+stages PRODUCER FIFO CONSUMER
+type Flags {
+  full: 1
+  empty: 1
+}
+type Commands {
+  push: 1
+  pop: 1
+}
+
+template Producer(W) {
+  out data: bits(W)
+  out valid: bit
+  in ready: bit
+}
+template Consumer(W) {
+  in data: bits(W)
+  in valid: bit
+  out ready: bit
+}
+
+block producer: Producer(W) in PRODUCER { label "Producer" }
+block storage in FIFO {
+  label "FIFO storage"
+  in data: bits(W)
+  out head: bits(W)
+  out status: Flags
+  in commands: Commands
+}
+block handshake in FIFO {
+  label "Handshake"
+  role control
+  in status: Flags
+  out commands: Commands
+  in valid: bit
+  out ready: bit
+  out out_valid: bit
+  in out_ready: bit
+}
+block consumer: Consumer(W) in CONSUMER { label "Consumer" }
+
+connect producer.data -> storage.data
+connect storage.head -> consumer.data
+connect storage.status -> handshake.status
+connect handshake.commands -> storage.commands
+connect producer.valid -> handshake.valid
+connect handshake.ready -> producer.ready
+connect handshake.out_valid -> consumer.valid
+connect consumer.ready -> handshake.out_ready
+note "InReady = !full; OutValid = !empty. Storage advances only on push/pop."

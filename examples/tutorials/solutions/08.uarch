@@ -1,0 +1,14 @@
+uarch 2
+title "An explicit placement hint"
+stages INPUT CAPTURE
+block source in INPUT { out data: bits(32) }
+block capture: register in CAPTURE {
+  label "Capture"
+  in d: bits(32) { label "D" }
+  out q: bits(32) { label "Q" }
+  layout {
+    column 0
+    row 2
+  }
+}
+connect source.data -> capture.d { label "Data/32" }

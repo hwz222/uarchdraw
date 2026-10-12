@@ -1,0 +1,18 @@
+uarch 2
+param W = 16
+title "One driver, two receivers"
+block source {
+  label "Source"
+  out data: bits(W)
+}
+
+block capture: register(W) {
+  label "Result register"
+}
+connect source.data -> capture.d
+
+block observer {
+  label "Observer"
+  in sample: bits(W)
+}
+connect source.data -> observer.sample

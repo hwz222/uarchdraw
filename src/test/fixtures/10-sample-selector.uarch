@@ -1,0 +1,43 @@
+uarch 1
+title "Eight-channel sample selector"
+subtitle "Select one sample and capture its channel tag in the same pipeline register"
+stages INPUT SELECT CAPTURE
+
+node samples block INPUT {"label":"Samples","column":0,"row":0,"span":3}
+pin samples.d0 out u16 right {"label":"0","align":"mux.d0"}
+pin samples.d1 out u16 right {"label":"1","align":"mux.d1"}
+pin samples.d2 out u16 right {"label":"2","align":"mux.d2"}
+pin samples.d3 out u16 right {"label":"3","align":"mux.d3"}
+pin samples.d4 out u16 right {"label":"4","align":"mux.d4"}
+pin samples.d5 out u16 right {"label":"5","align":"mux.d5"}
+pin samples.d6 out u16 right {"label":"6","align":"mux.d6"}
+pin samples.d7 out u16 right {"label":"7","align":"mux.d7"}
+node channel block INPUT {"label":"Channel","column":0,"row":3}
+pin channel.index out u3 right
+node mux mux SELECT {"label":"8:1 MUX","column":0,"row":0,"span":3}
+pin mux.d0 in u16 left {"label":"0"}
+pin mux.d1 in u16 left {"label":"1"}
+pin mux.d2 in u16 left {"label":"2"}
+pin mux.d3 in u16 left {"label":"3"}
+pin mux.d4 in u16 left {"label":"4"}
+pin mux.d5 in u16 left {"label":"5"}
+pin mux.d6 in u16 left {"label":"6"}
+pin mux.d7 in u16 left {"label":"7"}
+pin mux.index in u3 bottom
+pin mux.data out u16 right
+node capture pipeline CAPTURE {"label":"Capture","column":0,"row":0}
+pin capture.sample in u16 left {"label":"sample","row":1,"align":"mux.data"}
+pin capture.channel in u3 left {"label":"tag","row":3}
+
+net sample0 samples.d0 -> mux.d0 {"label":"Ch0/16"}
+net sample1 samples.d1 -> mux.d1 {"label":"Ch1/16"}
+net sample2 samples.d2 -> mux.d2 {"label":"Ch2/16"}
+net sample3 samples.d3 -> mux.d3 {"label":"Ch3/16"}
+net sample4 samples.d4 -> mux.d4 {"label":"Ch4/16"}
+net sample5 samples.d5 -> mux.d5 {"label":"Ch5/16"}
+net sample6 samples.d6 -> mux.d6 {"label":"Ch6/16"}
+net sample7 samples.d7 -> mux.d7 {"label":"Ch7/16"}
+net index channel.index -> mux.index, capture.channel {"label":"Channel/3","style":"control"}
+net selected mux.data -> capture.sample {"label":"Sample/16"}
+note "Channel selects inputs 0 through 7. Sample and tag are captured together."
+note "Inputs meet the same clock domain timing; clock and reset are omitted."

@@ -1,0 +1,811 @@
+{
+  "version": 1,
+  "lessons": [
+    {
+      "id": "01",
+      "title": "Draw your first connection",
+      "goal": "Build a source block and connect its result to a register.",
+      "prerequisites": [
+        "Install and build UarchDraw using the course setup instructions."
+      ],
+      "steps": [
+        {
+          "id": "01-01-block",
+          "title": "Draw one block",
+          "source": "01-01-block.uarch",
+          "learn": [
+            "Create a plain-text file named work.uarch. Paste this complete source into it.",
+            "uarch 2 selects the authoring language; title names the drawing.",
+            "block source gives the component a stable ID. label changes the displayed name. Braces contain declarations for this block."
+          ],
+          "observe": [
+            "One rectangle named Source appears under the default DESIGN stage.",
+            "There are no ports or wires yet."
+          ],
+          "checks": {
+            "symbols": 1,
+            "nets": 0
+          }
+        },
+        {
+          "id": "01-02-port",
+          "title": "Give the block an output",
+          "source": "01-02-port.uarch",
+          "learn": [
+            "Keep the block and add out data: bits(32) inside its braces.",
+            "out declares a driver port; data is its local ID; bits(32) declares a 32-bit scalar.",
+            "The tool chooses the right edge for this data output. You have not specified coordinates."
+          ],
+          "observe": [
+            "The rectangle gains an output anchor and the port name data.",
+            "An output does not need a receiver. There is still no wire."
+          ],
+          "checks": {
+            "symbols": 1,
+            "nets": 0
+          }
+        },
+        {
+          "id": "01-03-connect",
+          "title": "Connect a result register",
+          "source": "01-03-connect.uarch",
+          "learn": [
+            "Append a second block and a connect statement after the source block.",
+            "register(32) is a built-in interface with input d and output q. The colon selects the symbol/interface constructor.",
+            "source.data and capture.d identify block ports. The arrow declares one driver and one receiving input.",
+            "Inputs must be driven unless explicitly optional; declaring capture and its connection together keeps this checkpoint valid."
+          ],
+          "observe": [
+            "Source is on the left and Result register is on the right.",
+            "A labeled 32-bit wire ends with an arrow at the receiving d port.",
+            "The register q port has no wire yet; drawing a register does not simulate its clocked behavior."
+          ],
+          "checks": {
+            "symbols": 2,
+            "nets": 1,
+            "sinks": 1
+          }
+        }
+      ],
+      "exercise": {
+        "task": "Rename the displayed Source to Operand source without changing its block ID or connection.",
+        "source": "solutions/01.uarch",
+        "explanation": [
+          "Change only label. source.data still identifies the driver.",
+          "The block grows to fit the longer display name; connectivity stays at one net and one sink."
+        ],
+        "checks": {
+          "symbols": 2,
+          "nets": 1,
+          "sinks": 1
+        }
+      },
+      "errors": [],
+      "reviewQuestions": [
+        "How does changing a display label differ from changing a block ID?",
+        "Which declaration creates the output port, and which declaration creates the wire?"
+      ]
+    },
+    {
+      "id": "02",
+      "title": "Types, parameters and fanout",
+      "goal": "Change one width parameter and give one driver multiple receivers.",
+      "prerequisites": [
+        "Complete lesson 01. Start from its connected source and register."
+      ],
+      "steps": [
+        {
+          "id": "02-01-width",
+          "title": "Make the width a parameter",
+          "source": "02-01-width.uarch",
+          "learn": [
+            "Insert param W = 16 before the declarations that use W. Replace both hard-coded widths with W.",
+            "A parameter is a named integer used during expansion. Both ends still have exactly the same type.",
+            "Default wire labels follow the driver type, so /16 now appears without editing a label."
+          ],
+          "observe": [
+            "The topology is unchanged: two blocks and one wire.",
+            "The wire width annotation changes from /32 to /16."
+          ],
+          "checks": {
+            "symbols": 2,
+            "nets": 1,
+            "width": 16
+          }
+        },
+        {
+          "id": "02-02-fanout",
+          "title": "Add a second receiver",
+          "source": "02-02-fanout.uarch",
+          "learn": [
+            "Add Observer and its required sample input, then append another connect from source.data.",
+            "Separate connect statements from the same driver merge into one net. Do not invent another output to represent the branch.",
+            "A junction dot marks a connected branch. A crossing without that dot is not a connection."
+          ],
+          "observe": [
+            "One source reaches both the register and Observer.",
+            "There is one named net with two receiving ports, rather than two independent driver nets."
+          ],
+          "checks": {
+            "symbols": 3,
+            "nets": 1,
+            "sinks": 2,
+            "width": 16
+          }
+        }
+      ],
+      "exercise": {
+        "task": "Change the whole fanout diagram to 64 bits by editing only the parameter.",
+        "source": "solutions/02.uarch",
+        "explanation": [
+          "All three ports use W. One parameter edit updates every endpoint and the automatic /64 annotation."
+        ],
+        "checks": {
+          "symbols": 3,
+          "nets": 1,
+          "sinks": 2,
+          "width": 64
+        }
+      },
+      "errors": [
+        {
+          "id": "02-width-mismatch",
+          "title": "Mismatch one receiver width",
+          "source": "errors/02-width-mismatch.uarch",
+          "expected": "incompatible types",
+          "explanation": [
+            "Observer now expects 8 bits, while Source still drives 16 bits.",
+            "Fix the receiver to bits(W). Editing the visible wire label cannot repair a type mismatch."
+          ],
+          "flags": []
+        }
+      ],
+      "reviewQuestions": [
+        "Why must every receiving port have the same type as its driver?",
+        "Why does the fanout checkpoint contain one net even though it reaches two inputs?"
+      ]
+    },
+    {
+      "id": "03",
+      "title": "Select an ALU operand",
+      "goal": "Add a MUX, its control input and a distinct ALU symbol.",
+      "prerequisites": [
+        "Complete lesson 02. This lesson starts a new operand-selection diagram."
+      ],
+      "steps": [
+        {
+          "id": "03-01-mux",
+          "title": "Build a two-input selector",
+          "source": "03-01-mux.uarch",
+          "learn": [
+            "Replace work.uarch with this complete source; this is a new diagram, not an append to lesson 02.",
+            "stages declares the architectural left-to-right sequence. in INPUT assigns a block to a stage.",
+            "mux(2, W) creates d[0], d[1], select and out. Square brackets address one element of its data-port array.",
+            "bit means bits(1). Choice produces the required one-bit select input. role control describes its lane; style control makes its net dashed.",
+            "Connection options use braces. label overrides display text but does not change signal type."
+          ],
+          "observe": [
+            "Two data wires enter the tapered MUX at input 0 and input 1.",
+            "A dashed control wire enters select; the selected data reaches Capture.",
+            "All four nets have visible names; /16 is a display convention, and the actual width comes from the ports."
+          ],
+          "checks": {
+            "symbols": 4,
+            "nets": 4
+          }
+        },
+        {
+          "id": "03-02-alu",
+          "title": "Put an ALU after the selector",
+          "source": "03-02-alu.uarch",
+          "learn": [
+            "Insert EXECUTE between SELECT and CAPTURE. Add a custom alu block with explicit a, b and result ports.",
+            "Replace the old MUX-to-register connection with MUX-to-ALU and ALU-to-register connections.",
+            "Append the connection from operands.a to compute.a with the same explicit label as its existing fanout net.",
+            "The alu symbol has two operand edges and a central input notch. Naming a block ALU alone would not select this shape."
+          ],
+          "observe": [
+            "ALU appears between the MUX and Capture.",
+            "A now branches to MUX input 0 and ALU input a. Selected enters ALU input b.",
+            "The figure describes connectivity; it does not evaluate select values or ALU arithmetic."
+          ],
+          "checks": {
+            "symbols": 5,
+            "nets": 5
+          }
+        }
+      ],
+      "exercise": {
+        "task": "Change the visible names A/16 and B/16 to Primary/16 and Alternate/16 without swapping their destinations.",
+        "source": "solutions/03.uarch",
+        "explanation": [
+          "Only labels change. operands.a still drives d[0], and operands.b still drives d[1].",
+          "To change topology you would edit the destinations, not the visible names."
+        ],
+        "checks": {
+          "symbols": 4,
+          "nets": 4
+        }
+      },
+      "errors": [
+        {
+          "id": "03-undriven-select",
+          "title": "Remove the MUX control connection",
+          "source": "errors/03-undriven-select.uarch",
+          "expected": "Undriven input select.select",
+          "explanation": [
+            "The MUX still has a required select input. Restore its connect statement.",
+            "UarchDraw rejects a missing electrical connection instead of drawing an apparently complete selector."
+          ],
+          "flags": []
+        }
+      ],
+      "reviewQuestions": [
+        "Which MUX port is control, and how does it look different from the data wires?",
+        "Trace what reaches ALU a, ALU b and the result register in the final checkpoint."
+      ]
+    },
+    {
+      "id": "04",
+      "title": "Scale with port arrays",
+      "goal": "Grow a selector by changing parameters instead of repeating declarations.",
+      "prerequisites": [
+        "Complete lesson 03. Replace its separate operand declarations with a sample array."
+      ],
+      "steps": [
+        {
+          "id": "04-01-four",
+          "title": "Select four samples",
+          "source": "04-01-four.uarch",
+          "learn": [
+            "out data[N] creates N output ports. The ${index} display substitution numbers the ports from zero.",
+            "[*] connects corresponding elements of two equally sized arrays. This one statement expands four data nets.",
+            "clog2(N) computes the select width, with a minimum of one bit. Four inputs need two select bits.",
+            "The comma-separated destinations fan out Channel to both the MUX select input and Capture tag.",
+            "Bare register selects the shape while the body supplies a custom sample/tag interface; it does not add built-in d/q ports."
+          ],
+          "observe": [
+            "Four named horizontal channel wires enter a 4:1 MUX.",
+            "Channel/2 controls selection and also tags the captured sample.",
+            "There are six nets: four channels, one index fanout and one selected sample."
+          ],
+          "checks": {
+            "symbols": 4,
+            "nets": 6,
+            "sinks": 7,
+            "array": 4
+          }
+        },
+        {
+          "id": "04-02-eight",
+          "title": "Grow to eight samples",
+          "source": "04-02-eight.uarch",
+          "learn": [
+            "Change only param N = 4 to param N = 8. Keep the port and connect declarations unchanged.",
+            "The array expands, the MUX grows, and INDEX_W becomes three. ${index} and ${W} labels are recomputed."
+          ],
+          "observe": [
+            "The MUX becomes 8:1, with eight data wires and a /3 channel index.",
+            "All sample wires remain horizontal; no row, span or alignment edits are needed."
+          ],
+          "checks": {
+            "symbols": 4,
+            "nets": 10,
+            "array": 8
+          }
+        },
+        {
+          "id": "04-03-sixteen",
+          "title": "Grow to sixteen samples",
+          "source": "04-03-sixteen.uarch",
+          "learn": [
+            "Change N to 16 and render again. A taller canvas is the cost of showing every input clearly.",
+            "Read the SVG at a useful zoom rather than judging legibility from a small page thumbnail."
+          ],
+          "observe": [
+            "The MUX becomes 16:1 with inputs 0 through 15, and the index width is /4.",
+            "All sixteen channel labels remain visible and data paths stay horizontal."
+          ],
+          "checks": {
+            "symbols": 4,
+            "nets": 18,
+            "array": 16
+          }
+        }
+      ],
+      "exercise": {
+        "task": "Generate eight 64-bit samples by editing only N and W.",
+        "source": "solutions/04.uarch",
+        "explanation": [
+          "Set N to 8 and W to 64. The select index remains three bits; sample width becomes 64 bits."
+        ],
+        "checks": {
+          "symbols": 4,
+          "nets": 10,
+          "array": 8,
+          "width": 64
+        }
+      },
+      "errors": [
+        {
+          "id": "04-array-length",
+          "title": "Connect arrays with different lengths",
+          "source": "errors/04-array-length.uarch",
+          "expected": "equal lengths",
+          "explanation": [
+            "Samples has four elements but the MUX now has five. Wildcard pairing requires equal lengths.",
+            "Restore mux(N, W); the compiler will not silently drop or repeat an element."
+          ],
+          "flags": []
+        }
+      ],
+      "reviewQuestions": [
+        "Which two parameters control channel count and sample width?",
+        "Why does N = 16 need four index bits, and why must wildcard arrays have equal lengths?"
+      ]
+    },
+    {
+      "id": "05",
+      "title": "Reuse interfaces with templates",
+      "goal": "Refactor repeated port declarations without changing the circuit.",
+      "prerequisites": [
+        "Complete lesson 04. Start from its four-input checkpoint."
+      ],
+      "steps": [
+        {
+          "id": "05-01-samples",
+          "title": "Extract the Samples interface",
+          "source": "05-01-samples.uarch",
+          "learn": [
+            "Replace the Samples block body with a template definition and an instance of that template.",
+            "COUNT and WIDTH are local template parameter names. Samples(N, W) binds the argument values to them.",
+            "The template supplies ports and presentation; it does not instantiate internal subcircuits.",
+            "Keep all connections unchanged: source IDs still belong to the samples instance."
+          ],
+          "observe": [
+            "The same four channel paths and six nets remain.",
+            "This step improves reuse rather than adding hardware. Compare port names and destinations with lesson 04."
+          ],
+          "checks": {
+            "symbols": 4,
+            "nets": 6,
+            "array": 4
+          }
+        },
+        {
+          "id": "05-02-capture",
+          "title": "Extract a register interface",
+          "source": "05-02-capture.uarch",
+          "learn": [
+            "Replace the custom Capture block with a TaggedCapture template.",
+            "The : register on the template chooses the symbol kind. DATA_W and TAG_W bind locally for each instance.",
+            "Instance IDs still define connectivity. A reusable template name does not appear in port references."
+          ],
+          "observe": [
+            "Capture keeps its sample and tag inputs and its register shape.",
+            "The drawing remains a four-input selector; the interface definition is now reusable."
+          ],
+          "checks": {
+            "symbols": 4,
+            "nets": 6,
+            "array": 4
+          }
+        }
+      ],
+      "exercise": {
+        "task": "Instantiate the same output template at widths 8 and 32, and connect each instance to a matching receiver.",
+        "source": "solutions/05.uarch",
+        "explanation": [
+          "Output(8) and Output(32) bind independent local WIDTH values.",
+          "Each receiver has the matching type. Reusing the template does not force all instances to one width."
+        ],
+        "checks": {
+          "symbols": 4,
+          "nets": 2
+        }
+      },
+      "errors": [],
+      "reviewQuestions": [
+        "Which names belong to a template, and which belong to a block instance?",
+        "Why can the same Output template produce both an 8-bit and a 32-bit interface?"
+      ]
+    },
+    {
+      "id": "06",
+      "title": "Bundles, feedback and a FIFO",
+      "goal": "Name bundle fields, route a return signal, then add a ready/valid datapath.",
+      "prerequisites": [
+        "Complete lessons 02 and 05. This lesson starts a new storage/control diagram."
+      ],
+      "steps": [
+        {
+          "id": "06-01-status",
+          "title": "Send a typed status bundle",
+          "source": "06-01-status.uarch",
+          "learn": [
+            "type Flags declares a structural bundle with named full and empty fields. Each field is one bit.",
+            "Both ports use Flags. Equal total width alone would not make a different set of field names compatible.",
+            "role data keeps Storage in the main lane even though its only current net is status. Handshake is a control block.",
+            "Open the generated .signals.md file to read the bundle fields; the diagram shows one whole-bundle wire."
+          ],
+          "observe": [
+            "Storage sends one dashed status{2} bundle to Handshake.",
+            "The {2} annotation denotes the total bundle width; it does not mean an array with two elements."
+          ],
+          "checks": {
+            "symbols": 2,
+            "nets": 1,
+            "bundle": true
+          }
+        },
+        {
+          "id": "06-02-feedback",
+          "title": "Return push and pop commands",
+          "source": "06-02-feedback.uarch",
+          "learn": [
+            "Declare Commands with push and pop fields. Add an input on Storage and an output on Handshake.",
+            "The return connection points from the later CONTROL stage back to STORAGE. corridor bottom prefers a lower return channel.",
+            "A cycle in the connectivity diagram is valid. Signal directions still distinguish the unique driver from each receiver."
+          ],
+          "observe": [
+            "Two distinct bundle wires connect the blocks in opposite directions.",
+            "status carries full/empty toward Handshake; commands carries push/pop toward Storage.",
+            "These declarations document a contract; they do not calculate or execute push/pop."
+          ],
+          "checks": {
+            "symbols": 2,
+            "nets": 2,
+            "bundle": true
+          }
+        },
+        {
+          "id": "06-03-fifo",
+          "title": "Add the data and ready/valid interfaces",
+          "source": "06-03-fifo.uarch",
+          "learn": [
+            "Keep Flags and Commands, then add the Producer(W) and Consumer(W) templates from this complete checkpoint.",
+            "Storage gains data/head ports. Handshake gains valid/ready and out_valid/out_ready ports.",
+            "Connect data from Producer through Storage to Consumer. The four scalar control connections describe the two handshakes.",
+            "Restore all connections before rendering: every new input is required. The final contract uses ready = !full and out_valid = !empty."
+          ],
+          "observe": [
+            "The upper path carries Producer data through FIFO storage to Consumer.",
+            "Handshake sits below it. Status and commands join storage/control; ready returns toward Producer and from Consumer.",
+            "Eight named nets remain individually traceable. The figure does not verify FIFO pointer logic or capacity."
+          ],
+          "checks": {
+            "symbols": 4,
+            "nets": 8
+          }
+        }
+      ],
+      "exercise": {
+        "task": "Make the complete FIFO datapath 64 bits while keeping its flags and commands unchanged.",
+        "source": "solutions/06.uarch",
+        "explanation": [
+          "Only W changes. Producer, Storage and Consumer data widths become 64.",
+          "Flags and Commands remain two-bit bundles with their original field names."
+        ],
+        "checks": {
+          "symbols": 4,
+          "nets": 8,
+          "width": 64
+        }
+      },
+      "errors": [
+        {
+          "id": "06-bundle-fields",
+          "title": "Change a bundle field while retaining its total width",
+          "source": "errors/06-bundle-fields.uarch",
+          "expected": "incompatible types",
+          "explanation": [
+            "Flags and OtherFlags both total two bits, but full and occupied are different field names.",
+            "Restore the receiving port to Flags. Structural bundle checks preserve the intended interface meaning."
+          ],
+          "flags": []
+        }
+      ],
+      "reviewQuestions": [
+        "Why are two bundles with the same total width sometimes incompatible?",
+        "Trace status, commands and both ready signals in their actual driver-to-receiver directions."
+      ]
+    },
+    {
+      "id": "07",
+      "title": "Derive hierarchy views",
+      "goal": "Generate full, overview and detail drawings from one connectivity model.",
+      "prerequisites": [
+        "Complete lessons 01 and 05. This lesson starts a small processing chain."
+      ],
+      "steps": [
+        {
+          "id": "07-01-flat",
+          "title": "Build the complete chain",
+          "source": "07-01-flat.uarch",
+          "learn": [
+            "Create four blocks and three connections. Compute is a generic block here, not an ALU constructor.",
+            "Keep the architectural stages explicit so source, execution and output remain ordered."
+          ],
+          "observe": [
+            "Four rectangles form a chain with three labeled data nets.",
+            "Compute and Result register are separate components in EXECUTE."
+          ],
+          "checks": {
+            "symbols": 4,
+            "nets": 3
+          }
+        },
+        {
+          "id": "07-02-group",
+          "title": "Put execution blocks in nested groups",
+          "source": "07-02-group.uarch",
+          "learn": [
+            "Wrap Compute and Result register in group execute, then wrap that group in group core.",
+            "Inside execute, compute.result and latch.d are local references. Outside, use core.execute.compute.operand and core.execute.latch.q.",
+            "Group labels describe views. They do not add electrical ports or change the expanded graph.",
+            "Keep the external source and consumer outside core so the group has real boundary connections."
+          ],
+          "observe": [
+            "The ordinary render still shows four components and three nets.",
+            "The grouping changes organization without adding or removing hardware from the full graph."
+          ],
+          "checks": {
+            "symbols": 4,
+            "nets": 3
+          }
+        },
+        {
+          "id": "07-03-overview",
+          "title": "Collapse the core for an overview",
+          "source": "07-03-overview.uarch",
+          "learn": [
+            "Keep the same grouped source. Add --overview to the render command below.",
+            "The tool collapses top-level core and derives its boundary ports from the existing nets.",
+            "This is a view of the same model; do not hand-author a second disconnected overview diagram."
+          ],
+          "observe": [
+            "Processing core replaces Compute and Result register.",
+            "Source and Consumer remain visible, with two original boundary nets and their 32-bit types."
+          ],
+          "checks": {
+            "symbols": 3,
+            "nets": 2
+          },
+          "view": {
+            "overview": true
+          }
+        },
+        {
+          "id": "07-04-detail",
+          "title": "Focus on the nested execute group",
+          "source": "07-04-detail.uarch",
+          "learn": [
+            "Keep the same source and render with --focus core.execute.",
+            "The dotted path selects a nested group. The resulting view adds context blocks for real external drivers and receivers.",
+            "Boundary nets retain their IDs and types; the detail view does not create substitute signals."
+          ],
+          "observe": [
+            "Compute and Result register are visible again.",
+            "Operand source (external) and Result consumer (external) explain where data enters and leaves the group.",
+            "The detail has three nets, including the internal compute-to-register connection."
+          ],
+          "checks": {
+            "symbols": 4,
+            "nets": 3
+          },
+          "view": {
+            "focus": "core.execute"
+          }
+        }
+      ],
+      "exercise": {
+        "task": "Rename the displayed Processing core to Integer core, then render an overview without renaming its group ID.",
+        "source": "solutions/07.uarch",
+        "explanation": [
+          "Change the label inside group core. The group ID and qualified port paths remain unchanged.",
+          "Render with --overview to see Integer core as the collapsed block."
+        ],
+        "checks": {
+          "symbols": 3,
+          "nets": 2
+        },
+        "view": {
+          "overview": true
+        }
+      },
+      "errors": [],
+      "reviewQuestions": [
+        "Which internal net disappears from the overview, and which boundary nets remain?",
+        "Why do external context blocks appear in the focus view?"
+      ]
+    },
+    {
+      "id": "08",
+      "title": "Spacing and deliberate layout hints",
+      "goal": "Observe automatic spacing recovery and make one explicit placement change.",
+      "prerequisites": [
+        "Complete lessons 01 and 07. Return to a two-block diagram to isolate layout effects."
+      ],
+      "steps": [
+        {
+          "id": "08-01-automatic",
+          "title": "Start with automatic placement",
+          "source": "08-01-automatic.uarch",
+          "learn": [
+            "Use no layout section and no @side overrides. The engine measures the symbols and places the blocks.",
+            "Keep this small baseline so the next edit changes only one display label.",
+            "Open the .planning.json companion file to see the number of attempts and effective spacing.",
+            "Capture uses the custom register form from lesson 04. Its D and Q display labels are explicit, so they remain visible when placement becomes fixed. The electrical port IDs stay d and q."
+          ],
+          "observe": [
+            "One horizontal wire labeled Data/32 connects two blocks.",
+            "The short label fits the initial spacing profile."
+          ],
+          "checks": {
+            "symbols": 2,
+            "nets": 1,
+            "attempts": 1
+          }
+        },
+        {
+          "id": "08-02-long-label",
+          "title": "Let the planner make room for a long name",
+          "source": "08-02-long-label.uarch",
+          "learn": [
+            "Change only the connection label. Keep its driver, receiver and type unchanged.",
+            "When the name no longer fits, the compiler measures it and retries with a wider gap.",
+            "The planner tries at most four spacing profiles. This is bounded recovery, not a promise that every graph can be routed."
+          ],
+          "observe": [
+            "The two blocks move farther apart and the full label remains visible.",
+            "The console reports expanded spacing; .planning.json records more than one attempt.",
+            "Compare the topology with the preceding checkpoint: it is still one 32-bit net."
+          ],
+          "checks": {
+            "symbols": 2,
+            "nets": 1,
+            "expanded": true
+          }
+        },
+        {
+          "id": "08-03-anchor",
+          "title": "Move the receiver to another row",
+          "source": "08-03-anchor.uarch",
+          "learn": [
+            "Return to the short Data/32 label, then add a layout section inside Capture.",
+            "Specify both column and row to fix this block. Column is local to its stage; row is the shared vertical grid index.",
+            "Automatic peers remain automatic. A layout hint changes presentation, not electrical identity."
+          ],
+          "observe": [
+            "Capture appears lower and the data wire bends to reach it.",
+            "There are still two components and one net.",
+            "Use hints only when the automatic result needs a deliberate architectural emphasis."
+          ],
+          "checks": {
+            "symbols": 2,
+            "nets": 1
+          }
+        }
+      ],
+      "exercise": {
+        "task": "Move Capture one more row down without editing the connection.",
+        "source": "solutions/08.uarch",
+        "explanation": [
+          "Set row to 2 and keep column 0. The receiver moves farther down, so the route gets longer.",
+          "The source and destination port IDs remain unchanged."
+        ],
+        "checks": {
+          "symbols": 2,
+          "nets": 1
+        }
+      },
+      "errors": [
+        {
+          "id": "08-no-adaptive",
+          "title": "Disable spacing recovery for the long-label source",
+          "source": "errors/08-no-adaptive.uarch",
+          "expected": "No readable label space",
+          "explanation": [
+            "Run the same long-label checkpoint with --no-adaptive. Initial spacing is insufficient.",
+            "Remove --no-adaptive to restore the verified result. A failed check writes no output files."
+          ],
+          "flags": [
+            "--no-adaptive"
+          ]
+        }
+      ],
+      "reviewQuestions": [
+        "Which file reports that spacing expanded, and what does --no-adaptive change?",
+        "Does moving Capture to row 2 change its electrical source?"
+      ]
+    },
+    {
+      "id": "09",
+      "title": "Build an automatic arbiter",
+      "goal": "Combine arrays, templates, control lanes and feedback in a common datapath.",
+      "prerequisites": [
+        "Complete lessons 03–08. Start from the scalable selector rather than the full CPU diagram."
+      ],
+      "steps": [
+        {
+          "id": "09-01-selector",
+          "title": "Start with five queue heads",
+          "source": "09-01-selector.uarch",
+          "learn": [
+            "Start from the templated selector in lesson 05. Set N to 5 and W to 32.",
+            "This checkpoint still gets its index from Channel; it does not yet show requests, grants or output backpressure."
+          ],
+          "observe": [
+            "Five parallel 32-bit inputs enter a 5:1 MUX.",
+            "The three-bit index also reaches Capture tag."
+          ],
+          "checks": {
+            "symbols": 4,
+            "nets": 7,
+            "array": 5,
+            "width": 32
+          }
+        },
+        {
+          "id": "09-02-arbiter",
+          "title": "Add arbitration and output backpressure",
+          "source": "09-02-arbiter.uarch",
+          "learn": [
+            "Replace the Samples interface with Queues: retain its data array and add request and grant vectors of N bits.",
+            "Replace Channel with Round-robin: request enters it, grant returns to Queues, and index drives the MUX.",
+            "Add Any request. The same request net fans out to both controllers; its valid output drives Output buffer valid.",
+            "Replace tagged Capture with the buffer/consumer interfaces shown below. Connect buffer data and out_valid forward, consumer.ready back, and buffer.ready to arbiter.accept.",
+            "Read these new connections in that order before rendering. Controllers declare role control; all physical coordinates and alignments remain automatic."
+          ],
+          "observe": [
+            "The five data paths stay above the controllers and lead through Output buffer to Consumer.",
+            "Request, grant, select, valid and ready are individually named dashed signals.",
+            "The diagram has six blocks and fourteen nets. The behavioral contract advances priority only when the buffer accepts data; the compiler does not prove fairness."
+          ],
+          "checks": {
+            "symbols": 6,
+            "nets": 14,
+            "array": 5,
+            "width": 32
+          }
+        },
+        {
+          "id": "09-03-six",
+          "title": "Add a sixth queue with one edit",
+          "source": "09-03-six.uarch",
+          "learn": [
+            "Change N from 5 to 6. Keep the templates, wildcard connections and layout unchanged.",
+            "Request and grant vectors grow to six bits. The select index stays three bits because clog2(6) is three."
+          ],
+          "observe": [
+            "A sixth horizontal data wire appears and the MUX becomes 6:1.",
+            "The design now has fifteen nets; the control structure remains recognizable."
+          ],
+          "checks": {
+            "symbols": 6,
+            "nets": 15,
+            "array": 6
+          }
+        }
+      ],
+      "exercise": {
+        "task": "Generate a sixteen-input arbiter without adding port, net or placement statements.",
+        "source": "solutions/09.uarch",
+        "explanation": [
+          "Set N to 16. The data array, request/grant vectors and MUX expand together.",
+          "The select index becomes four bits. Open SVG and zoom to inspect the taller figure."
+        ],
+        "checks": {
+          "symbols": 6,
+          "nets": 25,
+          "array": 16
+        }
+      },
+      "errors": [],
+      "reviewQuestions": [
+        "Which signal returns to the arbiter when the output buffer can accept data?",
+        "What changes when N becomes 6, and which declarations stay exactly the same?"
+      ]
+    }
+  ]
+}

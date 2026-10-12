@@ -1,0 +1,26 @@
+uarch 2
+title "Status and command feedback"
+stages STORAGE CONTROL
+type Flags {
+  full: 1
+  empty: 1
+}
+type Commands {
+  push: 1
+  pop: 1
+}
+block storage in STORAGE {
+  label "Storage"
+  role data
+  out status: Flags
+  in commands: Commands
+}
+block handshake in CONTROL {
+  label "Handshake"
+  role control
+  in status: Flags
+  out commands: Commands
+}
+connect storage.status -> handshake.status
+
+connect handshake.commands -> storage.commands { style control, corridor bottom }

@@ -1,0 +1,34 @@
+uarch 1
+title "Follow a forwarded operand"
+subtitle "Keep local data moving right, and route bypass values around the bottom."
+stages ID EX MEM WB
+
+node operand register ID {"label":"Operand","column":0,"row":0}
+pin operand.value out u32 right
+
+node fwd mux EX {"label":"Fwd A","column":0,"row":0}
+pin fwd.original in u32 left {"label":"0","offset":0.25}
+pin fwd.mem in u32 left {"label":"1","offset":0.5}
+pin fwd.wb in u32 left {"label":"2","offset":0.75}
+pin fwd.select in u2 bottom
+pin fwd.out out u32 right
+node compare block EX {"label":"Branch input","column":1,"row":0}
+pin compare.value in u32 left
+node execute block EX {"label":"ALU input","column":1,"row":1}
+pin execute.value in u32 left
+node control block EX {"label":"Forward control","column":0,"row":2,"notes":["MEM > WB; rd != 0"]}
+pin control.select out u2 top
+
+node ready block MEM {"label":"Ready result","column":0,"row":0}
+pin ready.value out u32 bottom
+node writeback block WB {"label":"Writeback","column":0,"row":0}
+pin writeback.value out u32 bottom
+
+net original operand.value -> fwd.original {"label":"Original/32"}
+net mem-value ready.value -> fwd.mem {"label":"MEM/32","style":"forward","corridor":"bottom"}
+net wb-value writeback.value -> fwd.wb {"label":"WB/32","style":"writeback","corridor":"bottom"}
+net select control.select -> fwd.select {"label":"ForwardA/2","style":"control"}
+# Fanout belongs to ONE net; the router derives the branch junction.
+net forwarded fwd.out -> compare.value, execute.value {"label":"Forwarded/32"}
+note "0 = original operand; 1 = MEM ready result; 2 = selected WB result."
+note "The dot is a connection within one net. A line crossing without a dot is not a connection."

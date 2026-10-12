@@ -1,0 +1,26 @@
+uarch 2
+title "Reusable sample interfaces"
+param N = 4
+param W = 16
+param INDEX_W = clog2(N)
+stages INPUT SELECT CAPTURE
+template Samples(COUNT, WIDTH) {
+  label "Samples"
+  out data[COUNT]: bits(WIDTH) { label "${index}" }
+}
+block samples: Samples(N, W) in INPUT
+block channel in INPUT {
+  label "Channel"
+  role control
+  out index: bits(INDEX_W)
+}
+block select: mux(N, W) in SELECT
+template TaggedCapture(DATA_W, TAG_W): register {
+  label "Capture"
+  in sample: bits(DATA_W)
+  in tag: bits(TAG_W)
+}
+block capture: TaggedCapture(W, INDEX_W) in CAPTURE
+connect samples.data[*] -> select.d[*] { label "Ch${index}/${W}" }
+connect channel.index -> select.select, capture.tag { style control }
+connect select.out -> capture.sample { label "Sample/${W}" }

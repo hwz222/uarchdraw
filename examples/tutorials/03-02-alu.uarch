@@ -1,0 +1,29 @@
+uarch 2
+title "Select an ALU operand"
+param W = 16
+stages INPUT SELECT EXECUTE CAPTURE
+block operands in INPUT {
+  label "Operands"
+  out a: bits(W)
+  out b: bits(W)
+}
+block choice in INPUT {
+  label "Choice"
+  role control
+  out index: bit
+}
+block select: mux(2, W) in SELECT
+block capture: register(W) in CAPTURE { label "Capture" }
+connect operands.a -> select.d[0] { label "A/16" }
+connect operands.b -> select.d[1] { label "B/16" }
+connect choice.index -> select.select { style control }
+
+block compute: alu in EXECUTE {
+  label "ALU"
+  in a: bits(W)
+  in b: bits(W)
+  out result: bits(W)
+}
+connect operands.a -> compute.a { label "A/16" }
+connect select.out -> compute.b { label "Selected/16" }
+connect compute.result -> capture.d { label "Result/16" }

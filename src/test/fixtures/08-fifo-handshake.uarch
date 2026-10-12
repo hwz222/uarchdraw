@@ -1,0 +1,39 @@
+uarch 1
+title "FIFO with ready / valid flow control"
+subtitle "An abstract synchronous FIFO, with storage and handshake logic shown separately"
+stages PRODUCER FIFO CONSUMER
+type status {"full":1,"empty":1}
+type commands {"push":1,"pop":1}
+
+node producer block PRODUCER {"label":"Producer","column":0,"row":0}
+pin producer.data out u32 right
+pin producer.valid out u1 bottom
+pin producer.ready in u1 bottom
+node storage block FIFO {"label":"FIFO storage","column":0,"row":0}
+pin storage.data in u32 left {"label":"write"}
+pin storage.head out u32 right {"label":"head"}
+pin storage.status out status bottom {"offset":0.25}
+pin storage.commands in commands bottom {"offset":0.75}
+node handshake block FIFO {"label":"Handshake","column":0,"row":1,"notes":["push = valid AND ready","pop = out_valid AND out_ready"]}
+pin handshake.status in status top {"offset":0.25}
+pin handshake.commands out commands top {"offset":0.75}
+pin handshake.valid in u1 left
+pin handshake.ready out u1 left
+pin handshake.out_valid out u1 right
+pin handshake.out_ready in u1 right
+node consumer block CONSUMER {"label":"Consumer","column":0,"row":0}
+pin consumer.data in u32 left
+pin consumer.valid in u1 bottom
+pin consumer.ready out u1 bottom
+
+net data producer.data -> storage.data {"label":"InData/32"}
+net head storage.head -> consumer.data {"label":"Head/32"}
+net status storage.status -> handshake.status {"label":"Flags{2}","style":"control","description":"FIFO full and empty flags."}
+net commands handshake.commands -> storage.commands {"label":"PushPop{2}","style":"control"}
+net in-valid producer.valid -> handshake.valid {"label":"InValid/1","style":"control"}
+net in-ready handshake.ready -> producer.ready {"label":"InReady/1","style":"control","description":"InReady = !full; a full FIFO rejects new data."}
+net out-valid handshake.out_valid -> consumer.valid {"label":"OutValid/1","style":"control","description":"OutValid = !empty; this FIFO does not provide combinational fall-through."}
+net out-ready consumer.ready -> handshake.out_ready {"label":"OutReady/1","style":"control"}
+note "InReady = !full; OutValid = !empty. Empty FIFO data is not valid."
+note "Full FIFO waits for space even if a pop occurs in the current cycle."
+note "Storage advances only on push/pop. Clock, reset and internal pointers are omitted."

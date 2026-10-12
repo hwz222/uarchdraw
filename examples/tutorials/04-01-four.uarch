@@ -1,0 +1,24 @@
+uarch 2
+title "A scalable sample selector"
+param N = 4
+param W = 16
+param INDEX_W = clog2(N)
+stages INPUT SELECT CAPTURE
+block samples in INPUT {
+  label "Samples"
+  out data[N]: bits(W) { label "${index}" }
+}
+block channel in INPUT {
+  label "Channel"
+  role control
+  out index: bits(INDEX_W)
+}
+block select: mux(N, W) in SELECT
+block capture: register in CAPTURE {
+  label "Capture"
+  in sample: bits(W)
+  in tag: bits(INDEX_W)
+}
+connect samples.data[*] -> select.d[*] { label "Ch${index}/${W}" }
+connect channel.index -> select.select, capture.tag { style control }
+connect select.out -> capture.sample { label "Sample/${W}" }

@@ -1,0 +1,11 @@
+uarch 2
+title "My first connection"
+block source {
+  label "Operand source"
+  out data: bits(32)
+}
+
+block capture: register(32) {
+  label "Result register"
+}
+connect source.data -> capture.d

@@ -1,0 +1,19 @@
+uarch 2
+title "Select an operand"
+param W = 16
+stages INPUT SELECT CAPTURE
+block operands in INPUT {
+  label "Operands"
+  out a: bits(W)
+  out b: bits(W)
+}
+block choice in INPUT {
+  label "Choice"
+  role control
+  out index: bit
+}
+block select: mux(2, W) in SELECT
+block capture: register(W) in CAPTURE { label "Capture" }
+connect operands.a -> select.d[0] { label "A/16" }
+connect operands.b -> select.d[1] { label "B/16" }
+connect select.out -> capture.d { label "Selected/16" }
